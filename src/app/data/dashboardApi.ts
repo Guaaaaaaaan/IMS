@@ -136,24 +136,7 @@ export const getLowStockTop5 = async (): Promise<LowStockItem[]> => {
 };
 
 export const getRecentActivity = async (): Promise<RecentActivityItem[]> => {
-  // Prefer audit_logs
-  const { data: logs, error } = await supabase
-    .from('audit_logs')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(10);
-
-  if (!error && logs && logs.length > 0) {
-    return logs.map((log: any) => ({
-      id: log.id,
-      action: log.action,
-      description: `${log.action} on ${log.table_name}`,
-      timestamp: log.created_at,
-      actorEmail: log.actor_email
-    }));
-  }
-
-  // Fallback to documents if audit_logs empty/missing
+  // Use documents as recent activity to avoid missing audit_logs table
   const { data: docs, error: docError } = await supabase
     .from('documents')
     .select('*')

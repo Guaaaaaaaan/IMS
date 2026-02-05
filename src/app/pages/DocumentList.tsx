@@ -19,6 +19,13 @@ import {
 } from "../data/documentsApi";
 import { listWarehouses, Warehouse } from "../data/warehousesApi";
 import { Loader2 } from "lucide-react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
+} from "../components/ui/pagination";
 
 export default function DocumentList() {
   const navigate = useNavigate();
@@ -36,6 +43,9 @@ export default function DocumentList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [warehouseFilter, setWarehouseFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
 
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -67,11 +77,13 @@ export default function DocumentList() {
       setLoading(true);
       setErrorMsg(null);
 
-      const { data, error } = await listDocuments({
+      const { data, error, count } = await listDocuments({
          type: displayType,
          status: statusFilter === 'all' ? undefined : statusFilter as DocStatus,
          warehouseId: warehouseFilter === 'all' ? undefined : warehouseFilter,
-         search: searchTerm
+         search: searchTerm,
+         limit: itemsPerPage,
+         offset: (currentPage - 1) * itemsPerPage,
       });
 
       if (cancelled) return;
@@ -79,9 +91,11 @@ export default function DocumentList() {
       if (error) {
         console.error("load documents error", error);
         setDocuments([]);
+        setTotalCount(0);
         setErrorMsg("Failed to load documents");
       } else {
         setDocuments(data || []);
+        setTotalCount(count ?? 0);
       }
 
       setLoading(false);
@@ -90,7 +104,17 @@ export default function DocumentList() {
     return () => {
       cancelled = true;
     };
-  }, [displayType, statusFilter, warehouseFilter, searchTerm]);
+  }, [displayType, statusFilter, warehouseFilter, searchTerm, currentPage, itemsPerPage]);
+
+  const totalPages = Math.max(1, Math.ceil((totalCount || 0) / itemsPerPage));
+  const canPrevious = currentPage > 1;
+  const canNext = currentPage < totalPages;
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   return (
     <div>
@@ -122,7 +146,10 @@ export default function DocumentList() {
       </div>
 
       <FilterBar
-        onSearch={setSearchTerm}
+        onSearch={(value) => {
+          setSearchTerm(value);
+          setCurrentPage(1);
+        }}
         searchPlaceholder="Search Document ID"
         onNew={() => navigate(`/documents/${displayType}s/new`)}
         newLabel={`New ${displayType.charAt(0).toUpperCase() + displayType.slice(1)}`}
@@ -130,7 +157,10 @@ export default function DocumentList() {
         <select
           className="h-10 rounded-md border border-zinc-200 bg-white text-sm px-3 focus:outline-none focus:ring-2 focus:ring-zinc-950"
           value={warehouseFilter}
-          onChange={(e) => setWarehouseFilter(e.target.value)}
+          onChange={(e) => {
+            setWarehouseFilter(e.target.value);
+            setCurrentPage(1);
+          }}
         >
           <option value="all">All Warehouses</option>
           {warehouses.map((w) => (
@@ -143,7 +173,10 @@ export default function DocumentList() {
         <select
           className="h-10 rounded-md border border-zinc-200 bg-white text-sm px-3 focus:outline-none focus:ring-2 focus:ring-zinc-950"
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setCurrentPage(1);
+          }}
         >
           <option value="all">All Status</option>
           <option value="draft">Draft</option>
@@ -211,6 +244,51 @@ export default function DocumentList() {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm text-zinc-600">
+          <span>Items per page</span>
+          <select
+            className="h-9 rounded-md border border-zinc-200 bg-white text-sm px-2.5 focus:outline-none focus:ring-2 focus:ring-zinc-950"
+            value={itemsPerPage}
+            onChange={(e) => {
+              setItemsPerPage(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+          >
+            {[10, 25, 50, 100].map((size) => (
+              <option key={size} value={size}>{size}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-zinc-600">Page {currentPage} of {totalPages}</span>
+          <Pagination className="w-auto">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  className={!canPrevious ? "pointer-events-none opacity-50" : undefined}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (canPrevious) setCurrentPage((p) => p - 1);
+                  }}
+                />
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  className={!canNext ? "pointer-events-none opacity-50" : undefined}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (canNext) setCurrentPage((p) => p + 1);
+                  }}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       </div>
     </div>
   );

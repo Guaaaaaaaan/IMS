@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signInWithPassword } from '../data/authApi';
+import { supabase } from '../lib/supabaseClient';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
@@ -8,8 +9,34 @@ import { toast } from 'sonner';
 export default function Login() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    const timeout = setTimeout(() => {
+      if (!cancelled) setInitializing(false);
+    }, 2500);
+
+    (async () => {
+      try {
+        localStorage.clear();
+      } catch (err) {
+        console.error('Login cleanup localStorage clear failed:', err);
+      }
+      // Best-effort sign out; do not block login screen
+      void supabase.auth.signOut().catch((err) => {
+        console.error('Login cleanup signOut failed:', err);
+      });
+      if (!cancelled) setInitializing(false);
+    })();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,8 +88,8 @@ export default function Login() {
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign in'}
+          <Button type="submit" className="w-full" disabled={loading || initializing}>
+            {initializing ? 'Preparing login...' : (loading ? 'Signing in...' : 'Sign in')}
           </Button>
         </form>
 

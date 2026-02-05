@@ -2,6 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { FilterBar } from '../components/ui/filter-bar';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
+} from '../components/ui/pagination';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { listInventoryBalances, InventoryBalance } from '../data/inventoryApi';
 import { listWarehouses, Warehouse } from '../data/warehousesApi';
@@ -12,6 +19,9 @@ export default function InventoryBalances() {
   const [searchTerm, setSearchTerm] = useState('');
   const [warehouseFilter, setWarehouseFilter] = useState('all');
   const [showZero, setShowZero] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
   
   const [balances, setBalances] = useState<InventoryBalance[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -30,26 +40,39 @@ export default function InventoryBalances() {
      
      async function loadBalances() {
         setLoading(true);
-        const { data } = await listInventoryBalances({
-           warehouseId: warehouseFilter,
-           search: searchTerm
+        const { data, count } = await listInventoryBalances({
+           warehouseId: warehouseFilter === 'all' ? undefined : warehouseFilter,
+           search: searchTerm,
+           limit: itemsPerPage,
+           offset: (currentPage - 1) * itemsPerPage,
         });
         
         if (!cancelled && data) {
            setBalances(data);
+           setTotalCount(count ?? 0);
         }
         setLoading(false);
      }
      
      loadBalances();
      return () => { cancelled = true; };
-  }, [warehouseFilter, searchTerm]);
+  }, [warehouseFilter, searchTerm, currentPage, itemsPerPage]);
 
-  // Client-side filtering for zero stock (could be server-side if huge)
+  // Client-side filtering for zero stock (keep negatives visible)
   const filteredBalances = balances.filter(item => {
-     if (!showZero && item.on_hand <= 0) return false;
+     if (!showZero && item.on_hand === 0) return false;
      return true;
   });
+
+  const totalPages = Math.max(1, Math.ceil((totalCount || 0) / itemsPerPage));
+  const canPrevious = currentPage > 1;
+  const canNext = currentPage < totalPages;
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   return (
     <div>
@@ -58,13 +81,19 @@ export default function InventoryBalances() {
       </div>
 
       <FilterBar 
-        onSearch={setSearchTerm} 
+        onSearch={(value) => {
+          setSearchTerm(value);
+          setCurrentPage(1);
+        }} 
         searchPlaceholder="Search SKU or Product Name"
       >
         <select 
           className="h-10 rounded-md border border-zinc-200 bg-white text-sm px-3 focus:outline-none focus:ring-2 focus:ring-zinc-950"
           value={warehouseFilter}
-          onChange={(e) => setWarehouseFilter(e.target.value)}
+          onChange={(e) => {
+            setWarehouseFilter(e.target.value);
+            setCurrentPage(1);
+          }}
         >
           <option value="all">All Warehouses</option>
           {warehouses.map(w => (
@@ -77,7 +106,10 @@ export default function InventoryBalances() {
             type="checkbox" 
             id="showZero"
             checked={showZero} 
-            onChange={e => setShowZero(e.target.checked)}
+            onChange={e => {
+              setShowZero(e.target.checked);
+              setCurrentPage(1);
+            }}
             className="rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900"
           />
           <label htmlFor="showZero" className="text-sm text-zinc-700">Show Zero Stock</label>
@@ -131,6 +163,51 @@ export default function InventoryBalances() {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm text-zinc-600">
+          <span>Items per page</span>
+          <select
+            className="h-9 rounded-md border border-zinc-200 bg-white text-sm px-2.5 focus:outline-none focus:ring-2 focus:ring-zinc-950"
+            value={itemsPerPage}
+            onChange={(e) => {
+              setItemsPerPage(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+          >
+            {[10, 25, 50, 100].map((size) => (
+              <option key={size} value={size}>{size}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-zinc-600">Page {currentPage} of {totalPages}</span>
+          <Pagination className="w-auto">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  className={!canPrevious ? "pointer-events-none opacity-50" : undefined}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (canPrevious) setCurrentPage((p) => p - 1);
+                  }}
+                />
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  className={!canNext ? "pointer-events-none opacity-50" : undefined}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (canNext) setCurrentPage((p) => p + 1);
+                  }}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       </div>
     </div>
   );

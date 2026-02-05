@@ -103,10 +103,10 @@ export default function UserManagement() {
               </TableRow>
             ) : (
               users.map((u) => (
-                <TableRow key={u.user_id}>
+                <TableRow key={u.user_id || u.id}>
                   <TableCell className="font-medium">
                     {u.email}
-                    {u.user_id === user?.id && <span className="ml-2 text-xs text-zinc-400">(You)</span>}
+                    {(u.user_id || u.id) === user?.id && <span className="ml-2 text-xs text-zinc-400">(You)</span>}
                   </TableCell>
                   <TableCell>
                     <RoleBadge role={u.role} />

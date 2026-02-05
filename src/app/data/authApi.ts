@@ -32,6 +32,17 @@ export const getCurrentUser = async () => {
 };
 
 export const getMyProfile = async (userId: string) => {
+  const byId = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (!byId.error || (byId.error as any).code !== '42703') {
+    return byId;
+  }
+
+  // Fallback when profiles.id is not the user reference
   return await supabase
     .from('profiles')
     .select('*')
@@ -45,6 +56,24 @@ export const ensureProfileExists = async (user: User) => {
   
   if (existing) {
     return { data: existing as UserProfile, error: null };
+  }
+
+  if (fetchError && (fetchError as any).code === '42703') {
+    // profiles.user_id missing; try id-based upsert
+    const { data, error } = await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: user.id,
+          email: user.email,
+          role: 'viewer'
+        },
+        { onConflict: 'id' }
+      )
+      .select()
+      .single();
+
+    return { data: data as UserProfile, error };
   }
 
   // 2. If missing, insert default 'viewer'

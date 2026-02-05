@@ -9,6 +9,13 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { FilterBar } from '../components/ui/filter-bar';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
+} from '../components/ui/pagination';
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from '../components/ui/table';
@@ -28,6 +35,9 @@ export default function ProductList() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
   
   // Modal States
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -36,24 +46,38 @@ export default function ProductList() {
 
   const fetchProducts = async () => {
     setLoading(true);
-    const { data, error } = await listProducts({
+    const { data, error, count } = await listProducts({
       search: searchTerm,
       status: statusFilter,
-      limit: 50
+      limit: itemsPerPage,
+      offset: (currentPage - 1) * itemsPerPage,
     });
     
     if (error) {
       toast.error("Failed to load products");
       console.error(error);
-    } else if (data) {
-      setProducts(data);
+      setProducts([]);
+      setTotalCount(0);
+    } else {
+      setProducts(data ?? []);
+      setTotalCount(count ?? 0);
     }
     setLoading(false);
   };
 
   useEffect(() => {
     fetchProducts();
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter, currentPage, itemsPerPage]);
+
+  const totalPages = Math.max(1, Math.ceil((totalCount || 0) / itemsPerPage));
+  const canPrevious = currentPage > 1;
+  const canNext = currentPage < totalPages;
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const handleDelete = async () => {
     if (deleteConfirm) {
@@ -92,7 +116,10 @@ export default function ProductList() {
       </div>
 
       <FilterBar 
-        onSearch={setSearchTerm} 
+        onSearch={(value) => {
+          setSearchTerm(value);
+          setCurrentPage(1);
+        }} 
         searchPlaceholder="Search SKU or Name"
         onNew={canCreate ? () => navigate('/products/new') : undefined}
         newLabel="New Product"
@@ -100,7 +127,10 @@ export default function ProductList() {
         <select 
           className="h-10 rounded-md border border-zinc-200 bg-white text-sm px-3 focus:outline-none focus:ring-2 focus:ring-zinc-950"
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setCurrentPage(1);
+          }}
         >
           <option value="all">All Status</option>
           <option value="active">Active</option>
@@ -207,6 +237,51 @@ export default function ProductList() {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm text-zinc-600">
+          <span>Items per page</span>
+          <select
+            className="h-9 rounded-md border border-zinc-200 bg-white text-sm px-2.5 focus:outline-none focus:ring-2 focus:ring-zinc-950"
+            value={itemsPerPage}
+            onChange={(e) => {
+              setItemsPerPage(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+          >
+            {[10, 25, 50, 100].map((size) => (
+              <option key={size} value={size}>{size}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-zinc-600">Page {currentPage} of {totalPages}</span>
+          <Pagination className="w-auto">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  className={!canPrevious ? "pointer-events-none opacity-50" : undefined}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (canPrevious) setCurrentPage((p) => p - 1);
+                  }}
+                />
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  className={!canNext ? "pointer-events-none opacity-50" : undefined}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (canNext) setCurrentPage((p) => p + 1);
+                  }}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       </div>
 
       {/* Image Preview Modal */}

@@ -32,5 +32,9 @@ export const listAuditLogs = async ({
   if (action && action !== 'all') query = query.eq('action', action);
 
   const { data, error } = await query;
+  if (error && (error as any).code === 'PGRST205') {
+    // audit_logs table missing; return empty without throwing UI error
+    return { data: [] as AuditLog[], error: null };
+  }
   return { data: data as AuditLog[], error };
 };

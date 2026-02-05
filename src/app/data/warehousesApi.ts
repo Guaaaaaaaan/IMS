@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 export interface Warehouse {
   id: string;
   name: string;
-  code: string;
+  code?: string;
   status: string;
   created_at?: string;
 }
@@ -11,7 +11,7 @@ export interface Warehouse {
 export const listWarehouses = async () => {
   const { data, error } = await supabase
     .from('warehouses')
-    .select('*')
+    .select('id, name, code, status, created_at')
     .order('name');
   return { data: data as Warehouse[], error };
 };
@@ -19,7 +19,7 @@ export const listWarehouses = async () => {
 export const getWarehouse = async (id: string) => {
   const { data, error } = await supabase
     .from('warehouses')
-    .select('*')
+    .select('id, name, code, status, created_at')
     .eq('id', id)
     .single();
   return { data: data as Warehouse, error };
@@ -29,7 +29,7 @@ export const createWarehouse = async (name: string, code: string, status: string
   const { data, error } = await supabase
     .from('warehouses')
     .insert([{ name, code, status }])
-    .select()
+    .select('id, name, code, status, created_at')
     .single();
   return { data: data as Warehouse, error };
 };
@@ -43,7 +43,7 @@ export const updateWarehouse = async (id: string, name: string, code?: string, s
     .from('warehouses')
     .update(updates)
     .eq('id', id)
-    .select()
+    .select('id, name, code, status, created_at')
     .single();
   return { data: data as Warehouse, error };
 };

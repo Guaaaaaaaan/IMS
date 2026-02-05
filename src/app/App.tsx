@@ -18,6 +18,7 @@ import DocumentList from './pages/DocumentList';
 import DocumentForm from './pages/DocumentForm';
 import AuditLogs from './pages/AuditLogs';
 import UserManagement from './pages/UserManagement';
+import Settings from './pages/Settings';
 
 export default function App() {
   return (
@@ -54,7 +55,7 @@ export default function App() {
                       <Route path="/audit-logs" element={<AuditLogs />} />
                       <Route path="/users" element={<UserManagement />} />
 
-                      <Route path="/settings" element={<div className="text-center p-10 text-zinc-500">Settings Placeholder</div>} />
+                      <Route path="/settings" element={<Settings />} />
                     </Routes>
                   </Layout>
                 </AuthGuard>
