@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+.env
+.DS_Store
+*.log
+bin/
+obj/
+.vs/
+.idea/
+__pycache__/
+.venv/
+*.sqlite
+coverage/
+.next/
+out/
