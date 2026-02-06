@@ -128,6 +128,10 @@ export default function DocumentForm() {
 
   const onSubmit = async (data: DocumentFormData) => {
     try {
+      if (isNew && !canCreate) {
+        toast.error("You do not have permission to create documents");
+        return;
+      }
       if (isNew) {
         const { data: newDoc, error } = await createDocument(
           {

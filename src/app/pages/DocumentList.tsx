@@ -19,6 +19,7 @@ import {
 } from "../data/documentsApi";
 import { listWarehouses, Warehouse } from "../data/warehousesApi";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import {
   Pagination,
   PaginationContent,
@@ -51,6 +52,7 @@ export default function DocumentList() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const { canCreate } = useAuth();
 
   const handleTabChange = (val: string) => {
     navigate(`/documents/${val}s`); // pluralize for url
@@ -151,7 +153,7 @@ export default function DocumentList() {
           setCurrentPage(1);
         }}
         searchPlaceholder="Search Document ID"
-        onNew={() => navigate(`/documents/${displayType}s/new`)}
+        onNew={canCreate ? () => navigate(`/documents/${displayType}s/new`) : undefined}
         newLabel={`New ${displayType.charAt(0).toUpperCase() + displayType.slice(1)}`}
       >
         <select
