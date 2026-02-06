@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { getProduct, Product } from '../data/productsApi';
+import { getProduct, listProducts, Product } from '../data/productsApi';
 import { listInventoryBalances, listLedger, InventoryBalance, LedgerEntry } from '../data/inventoryApi';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -26,65 +26,57 @@ export default function SKUDetail() {
 
   useEffect(() => {
     async function loadData() {
-       if (!id) return;
-       setLoading(true);
-       
-       // 1. Fetch Product (try by ID, if fail try by SKU?)
-       // productsApi.getProduct takes ID.
-       // However, the route might be /inventory/product/:sku based on Dashboard.
-       // Let's assume :id param is actually SKU code if it doesn't look like a UUID, or just try both.
-       // Dashboard link: navigate(`/inventory/product/${item.sku}`) -> so 'id' is SKU.
-       // BUT, getProduct expects UUID. 
-       // We might need getProductBySku. 
-       
-       // Let's check `productsApi.ts` again. 
-       // It has `listProducts({ search })`.
-       
-       // To be safe, I'll implement a logic:
-       // If id is UUID-like, try getProduct(id).
-       // If not, assume it's SKU and use listProducts({ search: id }).
-       
-       let fetchedProduct: Product | null = null;
-       
-       // Simple heuristic for UUID
-       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-       
-       if (isUuid) {
-          const { data } = await getProduct(id);
-          fetchedProduct = data;
-       } else {
-          // Assume SKU
-          // listProducts does fuzzy search. We need exact match ideally.
-          // For now, list and find.
-          // Or we can just modify productsApi, but I'll stick to existing tools.
-          // I'll define a quick helper here or just use list.
-          const { data } = await import('../data/productsApi').then(m => m.listProducts({ search: id }));
-          fetchedProduct = data?.find(p => p.sku_code === id) || data?.[0] || null;
-       }
-
-       if (!fetchedProduct) {
+       if (!id) {
           setError("Product not found");
           setLoading(false);
           return;
        }
+       setLoading(true);
+       
+       try {
+          // 1. Fetch Product (try by ID, if fail try by SKU)
+          let fetchedProduct: Product | null = null;
+          
+          // Simple heuristic for UUID
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+          
+          if (isUuid) {
+             const { data, error } = await getProduct(id);
+             if (error) throw error;
+             fetchedProduct = data;
+          } else {
+             const { data, error } = await listProducts({ search: id });
+             if (error) throw error;
+             fetchedProduct = data?.find(p => p.sku_code === id) || data?.[0] || null;
+          }
 
-       setProduct(fetchedProduct);
-       
-       // 2. Fetch Inventory & Ledger using SKU
-       const sku = fetchedProduct.sku_code;
-       
-       const [invRes, ledRes] = await Promise.all([
-          listInventoryBalances({ search: sku }), // search uses ilike sku
-          listLedger({ sku: sku })
-       ]);
-       
-       // Filter strictly for SKU in case search was fuzzy
-       const strictInv = (invRes.data || []).filter(i => i.sku === sku);
-       const strictLedger = (ledRes.data || []).filter(l => l.sku === sku);
-       
-       setInventory(strictInv);
-       setLedger(strictLedger);
-       setLoading(false);
+          if (!fetchedProduct) {
+             setError("Product not found");
+             return;
+          }
+
+          setProduct(fetchedProduct);
+          
+          // 2. Fetch Inventory & Ledger using SKU
+          const sku = fetchedProduct.sku_code;
+          
+          const [invRes, ledRes] = await Promise.all([
+             listInventoryBalances({ search: sku }),
+             listLedger({ sku: sku })
+          ]);
+          
+          // Filter strictly for SKU in case search was fuzzy
+          const strictInv = (invRes.data || []).filter(i => i.sku === sku);
+          const strictLedger = (ledRes.data || []).filter(l => l.sku === sku);
+          
+          setInventory(strictInv);
+          setLedger(strictLedger);
+       } catch (e: any) {
+          console.error(e);
+          setError(e?.message || "Failed to load product");
+       } finally {
+          setLoading(false);
+       }
     }
     
     loadData();

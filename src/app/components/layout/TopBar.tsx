@@ -29,12 +29,6 @@ export function TopBar() {
 
       <div className="flex items-center gap-4">
         <SupabaseStatus />
-        <select className="h-9 rounded-md border border-zinc-200 bg-white text-sm px-3 focus:outline-none focus:ring-2 focus:ring-zinc-950">
-          <option>All Warehouses</option>
-          <option>Main Distribution Center</option>
-          <option>East Coast Hub</option>
-        </select>
-        
         <div className="h-6 w-px bg-zinc-200" />
         
         <button className="text-zinc-500 hover:text-zinc-900">
