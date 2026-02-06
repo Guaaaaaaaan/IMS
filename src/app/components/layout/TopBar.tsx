@@ -1,6 +1,5 @@
 import React from 'react';
-import { Search, Bell, User, LogOut } from 'lucide-react';
-import { Input } from '../ui/input';
+import { Bell, User, LogOut } from 'lucide-react';
 import { SupabaseStatus } from '../SupabaseStatus';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -17,15 +16,7 @@ export function TopBar() {
 
   return (
     <div className="fixed top-0 left-64 right-0 h-16 border-b border-zinc-200 bg-white z-10 flex items-center justify-between px-6">
-      <div className="flex items-center gap-4 w-96">
-        <div className="relative w-full">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
-          <Input 
-            placeholder="Search SKU, products, documents..." 
-            className="pl-9 bg-zinc-50 border-zinc-200 focus:bg-white transition-colors"
-          />
-        </div>
-      </div>
+      <div className="flex items-center gap-4 w-96" />
 
       <div className="flex items-center gap-4">
         <SupabaseStatus />
